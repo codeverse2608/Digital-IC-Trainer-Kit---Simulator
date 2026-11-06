@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Digital IC Trainer Kit</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#d9cbb0;font:14px system-ui,sans-serif;color:#222;padding:12px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;max-width:1150px;margin:0 auto 10px}
+.bar select,.bar button,.bar button:hover,.hint{font-size:12px;color:#4a3a1e;flex:1;min-width:240px}
+.box{max-width:1150px;margin:auto;background:#d8a967;padding:16px;border-radius:6px;border:3px solid #a8742e;box-shadow:0 4px 14px #0004}
+#board{position:relative;background:#1f8f4a;background-image:radial-gradient(#0003 1px,transparent 1px);background-size:9px 9px;border:3px solid #0d5a2b;padding:12px;border-radius:3px;color:#fff}
+.sec{border:1.5px solid #fff9;border-radius:3px;padding:8px;margin-bottom:10px}
+.sec>h4{margin:0 0 6px;font-size:11px;font-weight:600;letter-spacing:.5px}
+.row{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+.cell{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;min-width:44px}
+.jk{display:inline-block;width:17px;height:17px;border-radius:50%;background:radial-gradient(#111 30%,#c9a227 35%,#8a6d10 70%);border:2px solid #ddd;cursor:crosshair}
+.jk.sel{outline:3px solid #ff0;outline-offset:1px}
+.jk:hover{border-color:#ff0}
+.rail{display:flex;gap:26px;align-items:center;font-size:11px;margin:2px 0 8px}
+.rail .jk.v{background:radial-gradient(#400 30%,#e33 40%,#900 75%)}
+.rail .jk.g{background:radial-gradient(#000 30%,#444 40%,#111 75%)}
+#ics{display:flex;flex-wrap:wrap;gap:12px}
+.ic{background:#157a3c;border:1.5px solid #fff9;border-radius:3px;padding:6px 8px;position:relative}
+.ic .rw{display:flex;gap:7px}
+.ic .pin{display:flex;flex-direction:column;align-items:center;font-size:9px;width:20px;gap:1px}
+.chip{background:#222;border-radius:3px;margin:4px 0;height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 10px;font:700 15px ui-monospace,monospace;color:#eee;letter-spacing:1px}
+.chip small{font:600 10px system-ui;color:#9c9}
+.ic .x{position:absolute;top:-8px;right:-8px;width:18px;height:18px;border-radius:50%;border:0;background:#c22;color:#fff;font-size:11px;cursor:pointer;line-height:1}
+.led{width:20px;height:20px;border-radius:50%;background:#511;border:2px solid #ccc;transition:.08s}
+.led.on{background:#f33;box-shadow:0 0 6px 3px #f55,0 0 18px 8px #f336;border-color:#fff}
+.sw{width:22px;height:34px;border-radius:4px;background:#333;border:2px solid #ccc;position:relative;cursor:pointer;padding:0}
+.sw::after{content:"";position:absolute;left:2px;right:2px;height:13px;background:#eee;border-radius:2px;top:2px;transition:.1s}
+.sw.on::after{top:15px;background:#7f7}
+.btnred{width:50px;height:50px;border-radius:50%;background:radial-gradient(#f55,#b00);border:3px solid #600;cursor:pointer;box-shadow:0 3px 0 #500}
+.btnred:active{transform:translateY(2px);box-shadow:0 1px 0 #500}
+.pb{display:flex;gap:4px}.pb b{width:20px;height:20px;border-radius:50%;background:#333;font-size:10px;display:grid;place-items:center}
+.pb b.h.on{background:#f33;box-shadow:0 0 8px #f55}.pb b.l.on{background:#3c6;box-shadow:0 0 8px #3f6}
+.nm{width:54px;font:11px system-ui;text-align:center;background:#0d5a2b;color:#fff;border:1px dashed #fff8;border-radius:3px;padding:2px}
+.nm:focus{outline:2px solid #ff0;background:#fff;color:#000}
+svg#w{position:absolute;left:0;top:0;pointer-events:none;z-index:5}
+</style></head><body>
+
+<div class="bar">
+ <select id="type">
+  <option value="7400">7400</option><option value="7402">7402</option><option value="7408">7408</option>
+  <option value="7432">7432</option><option value="7486">7486</option><option value="7404">7404</option>
+ </select>
+ <button id="add">+ Add IC</button>
+ <button id="undo">Undo wire</button>
+ <button id="clr">Clear all wires</button>
+ <span class="hint">Click one hole, then another, to add a wire (unlimited). Double-click a wire to delete it.
+ Remember to wire VCC to pin 14 and GND to pin 7 of every IC.</span>
+</div>
+
+<div class="box"><div id="board">
+ <div class="sec"><h4>OUTPUT SECTION</h4><div class="row" id="outs"></div></div>
+ <div class="rail" id="vcc"><b>VCC</b></div>
+ <div id="ics"></div>
+ <div class="rail" id="gnd" style="margin-top:10px"><b>GND</b></div>
+ <div class="sec"><h4>INPUT SECTION (data switches)</h4><div class="row" id="ins"></div></div>
+ <div class="row" style="gap:12px;align-items:stretch">
+  <div class="sec" style="margin:0"><h4>CLOCK SECTION</h4><div class="row">
+   <div class="cell"><i class="jk" data-k="CLK"></i>1 Hz</div>
+   <div class="cell"><button class="x" id="clkb" style="padding:3px 8px">Run</button>clock</div></div></div>
+  <div class="sec" style="margin:0"><h4>LOGIC PROBE</h4><div class="row">
+   <div class="cell"><i class="jk" data-k="PRB"></i>tip</div>
+   <div class="pb"><b class="h" id="ph">H</b><b class="l" id="pl">L</b></div></div></div>
+  <div class="sec" style="margin:0"><h4>PULSER</h4><div class="row">
+   <div class="cell"><i class="jk" data-k="PUL"></i>out</div>
+   <button class="btnred" id="pul" title="Hold to send a 1"></button></div></div>
+ </div>
+ <svg id="w"></svg>
+</div></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const NOT=a=>+!a;
+const GATES={
+ '7400':{p:[[1,2,3],[4,5,6],[10,9,8],[13,12,11]],f:(a,b)=>+!(a&b),n:'NAND'},
+ '7402':{p:[[2,3,1],[5,6,4],[8,9,10],[11,12,13]],f:(a,b)=>+!(a|b),n:'NOR'},
+ '7408':{p:[[1,2,3],[4,5,6],[10,9,8],[13,12,11]],f:(a,b)=>a&b,n:'AND'},
+ '7432':{p:[[1,2,3],[4,5,6],[10,9,8],[13,12,11]],f:(a,b)=>a|b,n:'OR'},
+ '7486':{p:[[1,2,3],[4,5,6],[10,9,8],[13,12,11]],f:(a,b)=>a^b,n:'XOR'},
+ '7404':{p:[[1,2],[3,4],[5,6],[9,8],[11,10],[13,12]],f:NOT,n:'NOT'}
+};
+const COLORS=['#ffd400','#00e5ff','#ff6ad5','#ff8c1a','#b6ff3b','#ffffff','#ff5555','#a78bfa'];
+let ics=[],wires=[],pending=null,uid=0,sw=Array(8).fill(0),clk=0,pul=0,clkTimer=null;
+
+const nid=k=>/^VCC/.test(k)?'VCC':/^GND/.test(k)?'GND':k;
+function sim(ics,wires,st,auto){
+ const p={};
+ const F=x=>{x=nid(x);if(!(x in p))p[x]=x;while(p[x]!==x){p[x]=p[p[x]];x=p[x]}return x};
+ wires.forEach(w=>{const a=F(w.a),b=F(w.b);p[a]=b});
+ const v={}, set=(k,x)=>{v[F(k)]=x};
+ for(let i=0;i<8;i++)set('S'+i,st.sw[i]);
+ set('VCC',1);set('GND',0);set('CLK',st.clk);set('PUL',st.pul);
+ for(let n=0;n<40;n++){let ch=0;
+  ics.forEach(ic=>{
+   if(!(auto||(F(ic.id+'.14')==F('VCC')&&F(ic.id+'.7')==F('GND'))))return;
+   const g=GATES[ic.type];
+   g.p.forEach(q=>{
+    const ins=q.slice(0,-1).map(i=>{const x=v[F(ic.id+'.'+i)];return x===undefined?1:x});
+    const r=g.f(...ins),o=F(ic.id+'.'+q[q.length-1]);
+    if(v[o]!==r){v[o]=r;ch=1}
+   })});
+  if(!ch)break}
+ return{F,read:k=>v[F(k)]};
+}
+
+const jk=(k,c='')=>`<i class="jk ${c}" data-k="${k}"></i>`;
+function build(){
+ $('#outs').innerHTML=[...Array(8)].map((_,i)=>`<div class="cell"><div class="led" id="led${i}"></div>${jk('L'+i)}<input class="nm" data-d="L${i}" value="L${i}" maxlength="10" title="Click to rename"></div>`).join('');
+ $('#ins').innerHTML=[...Array(8)].map((_,i)=>`<div class="cell"><button class="sw" data-s="${i}"></button>${jk('S'+i)}<input class="nm" data-d="S${i}" value="S${i}" maxlength="10" title="Click to rename"></div>`).join('');
+ $('#vcc').innerHTML+=[1,2,3,4,5,6].map(i=>jk('VCC'+i,'v')).join('');
+ $('#gnd').innerHTML+=[1,2,3,4,5,6].map(i=>jk('GND'+i,'g')).join('');
+}
+function drawICs(){
+ $('#ics').innerHTML=ics.map(ic=>{
+  const top=[14,13,12,11,10,9,8],bot=[1,2,3,4,5,6,7];
+  const r=a=>`<div class="rw">${a.map(n=>`<div class="pin">${n==14||n==7?'':''}${jk(ic.id+'.'+n)}${n}</div>`).join('')}</div>`;
+  return `<div class="ic">${r(top)}<div class="chip"><span>${ic.type}</span><small>${ic.id}</small></div>${r(bot)}<button class="x" data-rm="${ic.id}">×</button></div>`}).join('');
+}
+const pos=k=>{const e=document.querySelector(`[data-k="${k}"]`);if(!e)return null;const b=$('#board').getBoundingClientRect(),r=e.getBoundingClientRect();return{x:r.left+r.width/2-b.left,y:r.top+r.height/2-b.top}};
+function draw(){
+ const b=$('#board'),s=$('#w');
+ s.setAttribute('width',b.clientWidth);s.setAttribute('height',b.clientHeight);
+ s.innerHTML=wires.map((w,i)=>{
+  const A=pos(w.a),B=pos(w.b);if(!A||!B)return'';
+  const sag=30+Math.hypot(A.x-B.x,A.y-B.y)*.18,d=`M${A.x} ${A.y}C${A.x} ${A.y+sag},${B.x} ${B.y+sag},${B.x} ${B.y}`;
+  return `<path d="${d}" fill="none" stroke="#000a" stroke-width="7" stroke-linecap="round"/>
+  <path d="${d}" fill="none" stroke="${w.c}" stroke-width="4" stroke-linecap="round"/>
+  <path d="${d}" data-i="${i}" fill="none" stroke="transparent" stroke-width="12" style="pointer-events:stroke;cursor:pointer"><title>Double-click to delete</title></path>
+  <circle cx="${A.x}" cy="${A.y}" r="5" fill="${w.c}" stroke="#000"/><circle cx="${B.x}" cy="${B.y}" r="5" fill="${w.c}" stroke="#000"/>`}).join('');
+}
+function update(){
+ const r=sim(ics,wires,{sw,clk,pul});
+ for(let i=0;i<8;i++)$('#led'+i).classList.toggle('on',r.read('L'+i)===1);
+ document.querySelectorAll('.sw').forEach((b,i)=>b.classList.toggle('on',!!sw[i]));
+ const p=r.read('PRB');$('#ph').classList.toggle('on',p===1);$('#pl').classList.toggle('on',p===0);
+ document.querySelectorAll('.jk').forEach(j=>j.classList.toggle('sel',j.dataset.k===pending));
+ draw();
+}
+$('#board').addEventListener('click',e=>{
+ const s=e.target.closest('.sw');if(s){sw[+s.dataset.s]^=1;return update()}
+ const x=e.target.closest('[data-rm]');
+ if(x){const id=x.dataset.rm;ics=ics.filter(c=>c.id!==id);wires=wires.filter(w=>!w.a.startsWith(id+'.')&&!w.b.startsWith(id+'.'));drawICs();return update()}
+ const j=e.target.closest('.jk');if(!j)return;const k=j.dataset.k;
+ if(!pending)pending=k;
+ else if(pending===k)pending=null;
+ else{wires.push({a:pending,b:k,c:COLORS[wires.length%COLORS.length]});pending=null}
+ update();
+});
+$('#w').addEventListener('dblclick',e=>{const i=e.target.dataset.i;if(i!==undefined){wires.splice(+i,1);update()}});
+$('#add').onclick=()=>{ics.push({id:'U'+(++uid),type:$('#type').value});drawICs();update()};
+$('#undo').onclick=()=>{wires.pop();update()};
+$('#clr').onclick=()=>{wires=[];pending=null;update()};
+const pb=$('#pul');
+['mousedown','touchstart'].forEach(ev=>pb.addEventListener(ev,e=>{e.preventDefault();pul=1;update()}));
+['mouseup','mouseleave','touchend'].forEach(ev=>pb.addEventListener(ev,()=>{pul=0;update()}));
+$('#clkb').onclick=()=>{
+ if(clkTimer){clearInterval(clkTimer);clkTimer=null;clk=0;$('#clkb').textContent='Run'}
+ else{clkTimer=setInterval(()=>{clk^=1;update()},500);$('#clkb').textContent='Stop'}
+ update()};
+addEventListener('resize',draw);
+
+build();
+ics.push({id:'U'+(++uid),type:'7400'});ics.push({id:'U'+(++uid),type:'7408'});
+drawICs();update();
+</script></body></html>
